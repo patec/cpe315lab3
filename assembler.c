@@ -88,20 +88,35 @@ char getInstruction(char *word, int *code) {
       printf("%x\n", *code);
 
    } else if (!strcmp(word, "sltiu")) { //I
-
+      opFormat = 'I';
+      *code |= 0x0b << 26;
    } else if (!strcmp(word, "beq")) { //I
+      opFormat = 'I';
+      *code |= 0x04 << 26;
 
    } else if (!strcmp(word, "bne")) { //I
+      opFormat = 'I';
+      *code |= 0x05 << 26;
 
    } else if (!strcmp(word, "lw")) { //I
+      opFormat = 'I';
+      *code |= 0x23 << 26;
 
    } else if (!strcmp(word, "sw")) { //I
+      opFormat = 'I';
+      *code |= 0x2b << 26;
 
    } else if (!strcmp(word, "j")) { //J
+      opFormat = 'I';
+      *code |= 0x02 << 26;
 
    } else if (!strcmp(word, "jr")) { //R
+      opFormat = 'I';
+      *code |= 0x08;
 
    } else if (!strcmp(word, "jal")) { //J
+      opFormat = 'I';
+      *code |= 0x03 << 26;
 
    } else {
       opFormat = '\0';
@@ -204,27 +219,39 @@ int getRegisterNumber(char *reg) {
  * General parsing of line
  */
 void parseLineGeneral(char *line, int curLine) {
-   const char *format = " \t,";
+   const char *format = " \t,\n";
    char *word;
    int code = 0, reg, instLoc = 0, isComment;
    char opFormat = 0;
    char buffer[INST_SIZE];
+   int i = 0;
 
    word = strtok(line, format);
    while (word != NULL) {
       isComment = trimComment(word);
+      printf("loop %d: %s\n", i++, word);
 
       if (opFormat == '\0') {
          opFormat = getInstruction(word, &code);
       } else if (opFormat == 'R') {
          reg = getRegisterNumber(word); 
          if (reg != -1) {
-            if (instLoc == 0) {
+            /*if (instLoc == 0) {
                code |= reg << 11; //rd
             } else if (instLoc == 1) {
                code |= reg << 21; //rs
             } else if (instLoc == 2) {
                code |= reg << 16; //rt
+            }*/
+            if (instLoc == 0) {
+               printf(" source reg: %d\n", reg);
+               code |= reg << 21; //rd
+            } else if (instLoc == 1) {
+               printf(" target reg: %d\n", reg);
+               code |= reg << 16; //rs
+            } else if (instLoc == 2) {
+               printf(" dest reg: %d\n", reg);
+               code |= reg << 11; //rt
             }
          }
          instLoc++;
@@ -288,8 +315,9 @@ void assemble(FILE *code) {
 void printAssembled(int numLines) {
    int i;
 
-   for (i = 0; i < numLines; i++)
-      printf("%08X\n", assembledLines[i]);
+   for (i = 0; i < numLines; i++) {
+      printf("hex: %08X\n", assembledLines[i]);
+   }
 }
 
 int main(int argc, char **argv) {
