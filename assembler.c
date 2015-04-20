@@ -3,10 +3,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define NUM_LINES
 #define LINE_LENGTH 100
 #define WORD_SIZE 10
 #define INST_SIZE 32
 
+static int *assembledLines;
 /**
  * Check beginning of each line for symbol
  */
@@ -23,15 +25,18 @@ void parseLineForSymbolTable(char *line) {
 
 /**
  * First Pass - check each line for a symbol
+ * Return number of lines in file
  */
-void constructSymbolTable(FILE *code) {
+int constructSymbolTable(FILE *code) {
    char line[LINE_LENGTH];
+   int numLines = 0;
 
-   printf("constructing symbol table\n");
    while (fgets(line, LINE_LENGTH, code)) {
       parseLineForSymbolTable(line); 
+      numLines++;
    }
-   printf("done\n");
+   
+   return numLines;
 }
 
 /**
@@ -198,7 +203,7 @@ int getRegisterNumber(char *reg) {
 /**
  * General parsing of line
  */
-void parseLineGeneral(char *line) {
+void parseLineGeneral(char *line, int curLine) {
    const char *format = " \t,";
    char *word;
    int code = 0, reg, instLoc = 0, isComment;
@@ -264,9 +269,7 @@ void parseLineGeneral(char *line) {
       word = strtok(NULL, format);
    }
 
-   if (code != 0)
-      printf("%08X\n", code);
-   //printBinary(code);
+   assembledLines[curLine] = code;
 }
 
 /**
@@ -274,20 +277,34 @@ void parseLineGeneral(char *line) {
  */
 void assemble(FILE *code) {
    char line[LINE_LENGTH];
+   int curLine = 0;
 
    while (fgets(line, LINE_LENGTH, code)) {
-      parseLineGeneral(line); 
+      parseLineGeneral(line, curLine); 
+      curLine++;
    }
+}
+
+void printAssembled(int numLines) {
+   int i;
+
+   for (i = 0; i < numLines; i++)
+      printf("%08X\n", assembledLines[i]);
 }
 
 int main(int argc, char **argv) {
    FILE *code;
+   int numLines;
 
    code = fopen(argv[1], "r");
-   constructSymbolTable(code);
+   numLines = constructSymbolTable(code);
+   assembledLines = calloc(sizeof(int), numLines);
+
    fclose(code);
    code = fopen(argv[1], "r");
    assemble(code);
+
+   printAssembled(numLines);
 
    return 0;
 }
