@@ -8,6 +8,7 @@
 #define WORD_SIZE 10
 #define INST_SIZE 32
 
+
 static int *assembledLines;
 /**
  * Check beginning of each line for symbol
