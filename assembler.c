@@ -7,20 +7,44 @@
 #define LINE_LENGTH 100
 #define WORD_SIZE 10
 #define INST_SIZE 32
+#define SYMBOL_TABLE_SIZE 500
 
+typedef struct {
+   char symbol[40];
+   int loc;
+} symbolEntry;
+
+static symbolEntry symbolTable[SYMBOL_TABLE_SIZE];
 static int *assembledLines;
+
 /**
  * Check beginning of each line for symbol
  */
-void parseLineForSymbolTable(char *line) {
-   const char *format = " ,";
-   char *word;
+int parseLineForSymbolTable(char *line, int *numSymbols, int numLines) {
+   const char *format = " \t,\n";
+   char *word, *end;
+   int len;
 
-   word = strtok(line, format);
-   //Only need to check first word of line for symbol
-   if (word[strlen(word) - 1] == ':') {
-      // Add to symbol table
+   if ((int)strlen(line) == 0) {
+      return 0;
    }
+   
+   word = strtok(line, format);
+   if(word == NULL || strlen(word) == 0) {
+      return 0;
+   }
+
+   //Only need to check first word of line for symbol
+   if ((end = strchr(word, ':')) != NULL) {
+      *(end + 1) = '\0';
+      printf("adding symbol: %s\n", word);
+      strcpy(symbolTable[*numSymbols].symbol, word);
+      symbolTable[*numSymbols].symbol[strlen(word) - 1] = '\0';
+      symbolTable[*numSymbols].loc = numLines; //FIXX
+      // Add to symbol table
+      (*numSymbols)++;
+   }
+   return 1;
 }
 
 /**
@@ -29,11 +53,11 @@ void parseLineForSymbolTable(char *line) {
  */
 int constructSymbolTable(FILE *code) {
    char line[LINE_LENGTH];
-   int numLines = 0;
+   int numLines = 0, numSymbols = 0;
 
    while (fgets(line, LINE_LENGTH, code)) {
-      parseLineForSymbolTable(line); 
-      numLines++;
+      if (parseLineForSymbolTable(line, &numSymbols, numLines))
+         numLines++;
    }
    
    return numLines;
@@ -85,24 +109,30 @@ char getInstruction(char *word, int *code) {
    } else if (!strcmp(word, "sltu")) { //R
       opFormat = 'R';
       *code |= 0x2b;
-      printf("%x\n", *code);
-
    } else if (!strcmp(word, "sltiu")) { //I
-
+      opFormat = 'I';
+      *code |= 0x0b << 26;
    } else if (!strcmp(word, "beq")) { //I
-
+      opFormat = 'I';
+      *code |= 0x04 << 26;
    } else if (!strcmp(word, "bne")) { //I
-
+      opFormat = 'I';
+      *code |= 0x05 << 26;
    } else if (!strcmp(word, "lw")) { //I
-
+      opFormat = 'I';
+      *code |= 0x23 << 26;
    } else if (!strcmp(word, "sw")) { //I
-
+      opFormat = 'I';
+      *code |= 0x2b << 26;
    } else if (!strcmp(word, "j")) { //J
-
+      opFormat = 'J';
+      *code |= 0x02 << 26;
    } else if (!strcmp(word, "jr")) { //R
-
+      opFormat = 'R';
+      *code |= 0x08;
    } else if (!strcmp(word, "jal")) { //J
-
+      opFormat ='J';
+      *code |= 0x03 << 26;
    } else {
       opFormat = '\0';
    }
@@ -203,8 +233,8 @@ int getRegisterNumber(char *reg) {
 /**
  * General parsing of line
  */
-void parseLineGeneral(char *line, int curLine) {
-   const char *format = " \t,";
+int parseLineGeneral(char *line, int curLine) {
+   const char *format = " \n\t,";
    char *word;
    int code = 0, reg, instLoc = 0, isComment;
    char opFormat = 0;
@@ -230,13 +260,15 @@ void parseLineGeneral(char *line, int curLine) {
          instLoc++;
       } else if (opFormat == 'S') {
          reg = getRegisterNumber(word); 
-         if (reg != -1) {
-            if (instLoc == 0) {
-               code |= reg << 11; //rd
-            } else if (instLoc == 1) {
-               code |= reg << 16; //rt
-            } else if (instLoc == 2) {
-               code |= reg << 6; //shamt
+         if (instLoc == 2) {
+            code |= (strtol(word, NULL, 10) & 0x1F) << 6; //shamt
+         } else {
+            if (reg != -1) {
+               if (instLoc == 0) {
+                  code |= reg << 11; //rd
+               } else if (instLoc == 1) {
+                  code |= reg << 16; //rt
+               }
             }
          }
          instLoc++;
@@ -252,7 +284,7 @@ void parseLineGeneral(char *line, int curLine) {
                if (instLoc == 0)
                   code |= reg << 16;
                else if (instLoc == 1)
-                  code |= reg << 25;
+                  code |= reg << 21;
             }
          }
          instLoc++;
@@ -269,29 +301,46 @@ void parseLineGeneral(char *line, int curLine) {
       word = strtok(NULL, format);
    }
 
-   assembledLines[curLine] = code;
+   if (code) {
+      assembledLines[curLine] = code;
+      return 1;
+   }
+
+   return 0;
 }
 
 /**
  * Second pass - assemble the program
  */
-void assemble(FILE *code) {
+int assemble(FILE *code) {
    char line[LINE_LENGTH];
    int curLine = 0;
 
    while (fgets(line, LINE_LENGTH, code)) {
-      parseLineGeneral(line, curLine); 
-      curLine++;
+      if (parseLineGeneral(line, curLine))
+         curLine++;
    }
+   
+   return curLine;
 }
 
 void printAssembled(int numLines) {
    int i;
 
-   for (i = 0; i < numLines; i++)
+   for (i = 0; i < numLines; i++) {
       printf("%08X\n", assembledLines[i]);
+   }
 }
 
+void printSymbolTable(int numLines) {
+   int i;
+
+   for( i = 0; i < numLines; i++) {
+      if (strlen(symbolTable[i].symbol) != 0) {
+         printf("Symbol: %s @ line: %d\n", symbolTable[i].symbol, symbolTable[i].loc);
+      }
+   }
+}
 int main(int argc, char **argv) {
    FILE *code;
    int numLines;
@@ -302,9 +351,9 @@ int main(int argc, char **argv) {
 
    fclose(code);
    code = fopen(argv[1], "r");
-   assemble(code);
+   printAssembled(assemble(code));
+   printSymbolTable(numLines);
 
-   printAssembled(numLines);
-
+   free(assembledLines);
    return 0;
 }
