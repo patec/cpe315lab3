@@ -116,10 +116,10 @@ char getInstruction(char *word, int *code) {
       opFormat = 'I';
       *code |= 0x0b << 26;
    } else if (!strcmp(word, "beq")) { //I
-      opFormat = 'I';
+      opFormat = 'B';
       *code |= 0x04 << 26;
    } else if (!strcmp(word, "bne")) { //I
-      opFormat = 'I';
+      opFormat = 'B';
       *code |= 0x05 << 26;
    } else if (!strcmp(word, "lw")) { //I
       opFormat = 'I';
@@ -313,6 +313,14 @@ int parseLineGeneral(char *line, int curLine) {
          }
          instLoc++;
       } else if (opFormat == 'I') {
+         for (i = 0; i < numSymbols; i++) {
+            if (!strcmp(symbolTable[i].symbol, word)) {
+               //printf("matched symbol %s with word %s on jump: %s\n", symbolTable[i].symbol, word, line);
+               code |= (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4 & 0xFFFF;
+               //printf("code: %08x  symbol: %s @ loc: %08x\n", code, symbolTable[i].symbol, symbolTable[i].loc);
+               jumpSymbol = 1;
+            }
+         }
          if (instLoc == 2) {
             if (strstr(word, "0x") != NULL)
                code |= strtol(word, NULL, 16) & 0xFFFF;
@@ -330,6 +338,51 @@ int parseLineGeneral(char *line, int curLine) {
                }
             }
             else {
+               //printf("word: %s\n", word);
+               immediate = strtok(word, formatReg);
+               if (immediate != NULL)
+                  code |= strtol(immediate, NULL, 10);
+               regStr = strtok(NULL, formatReg);
+               if (regStr != NULL) {
+                  reg = getRegisterNumber(regStr);
+                  if (reg != -1) {
+                     code |= reg << 21;
+                  }
+               }
+               
+               
+            }
+               
+         }
+         instLoc++;
+      } else if (opFormat == 'B') {
+         for (i = 0; i < numSymbols; i++) {
+            if (!strcmp(symbolTable[i].symbol, word)) {
+               //printf("matched symbol %s with word %s on jump: %s\n", symbolTable[i].symbol, word, line);
+               code |= (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4 & 0xFFFF;
+               //printf("offset: %d\n", (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4);
+               //printf("code: %08x  symbol: %s @ loc: %08x\n", code, symbolTable[i].symbol, symbolTable[i].loc);
+               jumpSymbol = 1;
+            }
+         }
+         if (instLoc == 2) {
+            if (strstr(word, "0x") != NULL)
+               code |= strtol(word, NULL, 16) & 0xFFFF;
+            else
+               code |= strtol(word, NULL, 10) & 0xFFFF; //and word so only 16 bytes are copied
+         } else {
+            //printf("line: %s, word: %s\n", line, word);
+            reg = getRegisterNumber(word); 
+            if (reg != -1) {
+               if (instLoc == 0) {
+                  code |= reg << 21;
+               }
+               else if (instLoc == 1) {
+                  code |= reg << 16;
+               }
+            }
+            else {
+               //printf("word: %s\n", word);
                immediate = strtok(word, formatReg);
                if (immediate != NULL)
                   code |= strtol(immediate, NULL, 10);
