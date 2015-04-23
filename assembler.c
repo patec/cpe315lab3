@@ -109,6 +109,9 @@ char getInstruction(char *word, int *code) {
    } else if (!strcmp(word, "sub")) { //R
       opFormat = 'R';
       *code |= 0x22;
+   } else if (!strcmp(word, "slt")) { //R
+      opFormat = 'R';
+      *code |= 0x2a; 
    } else if (!strcmp(word, "sltu")) { //R
       opFormat = 'R';
       *code |= 0x2b;
@@ -180,69 +183,69 @@ int trimComment(char *word) {
 int getRegisterNumber(char *reg) {
    int num;
 
-   if (!strcmp(reg, "$zero") || !strcmp(reg, "$0")) {
+   if (!strcmp(reg, "zero")) {
       num = 0;
-   } else if (!strcmp(reg, "$at") || !strcmp(reg, "$1")) {
+   } else if (!strcmp(reg, "at")) {
       num = 1;
-   } else if (!strcmp(reg, "$v0") || !strcmp(reg, "$2")) {
+   } else if (!strcmp(reg, "v0")) {
       num = 2; 
-   } else if (!strcmp(reg, "$v1") || !strcmp(reg, "$3")) {
+   } else if (!strcmp(reg, "v1")) {
       num = 3; 
-   } else if (!strcmp(reg, "$a0") || !strcmp(reg, "$4")) {
+   } else if (!strcmp(reg, "a0")) {
       num = 4;
-   } else if (!strcmp(reg, "$a1") || !strcmp(reg, "$5")) {
+   } else if (!strcmp(reg, "a1")) {
       num = 5;
-   } else if (!strcmp(reg, "$a2") || !strcmp(reg, "$6")) {
+   } else if (!strcmp(reg, "a2")) {
       num = 6;
-   } else if (!strcmp(reg, "$a3") || !strcmp(reg, "$7")) {
+   } else if (!strcmp(reg, "a3")) {
       num = 7;
-   } else if (!strcmp(reg, "$t0") || !strcmp(reg, "$8")) {
+   } else if (!strcmp(reg, "t0")) {
       num = 8;
-   } else if (!strcmp(reg, "$t1") || !strcmp(reg, "$9")) {
+   } else if (!strcmp(reg, "t1")) {
       num = 9;
-   } else if (!strcmp(reg, "$t2") || !strcmp(reg, "$10")) {
+   } else if (!strcmp(reg, "t2")) {
       num = 10;
-   } else if (!strcmp(reg, "$t3") || !strcmp(reg, "$11")) {
+   } else if (!strcmp(reg, "t3")) {
       num = 11;
-   } else if (!strcmp(reg, "$t4") || !strcmp(reg, "$12")) {
+   } else if (!strcmp(reg, "t4")) {
       num = 12;
-   } else if (!strcmp(reg, "$t5") || !strcmp(reg, "$13")) {
+   } else if (!strcmp(reg, "t5")) {
       num = 13;
-   } else if (!strcmp(reg, "$t6") || !strcmp(reg, "$14")) {
+   } else if (!strcmp(reg, "t6")) {
       num = 14;
-   } else if (!strcmp(reg, "$t7") || !strcmp(reg, "$15")) {
+   } else if (!strcmp(reg, "t7")) {
       num = 15;
-   } else if (!strcmp(reg, "$s0") || !strcmp(reg, "$16")) {
+   } else if (!strcmp(reg, "s0")) {
       num = 16;
-   } else if (!strcmp(reg, "$s1") || !strcmp(reg, "$17")) {
+   } else if (!strcmp(reg, "s1")) {
       num = 17;
-   } else if (!strcmp(reg, "$s2") || !strcmp(reg, "$18")) {
+   } else if (!strcmp(reg, "s2")) {
       num = 18;
-   } else if (!strcmp(reg, "$s3") || !strcmp(reg, "$19")) {
+   } else if (!strcmp(reg, "s3")) {
       num = 19;
-   } else if (!strcmp(reg, "$s4") || !strcmp(reg, "$20")) {
+   } else if (!strcmp(reg, "s4")) {
       num = 20;
-   } else if (!strcmp(reg, "$s5") || !strcmp(reg, "$21")) {
+   } else if (!strcmp(reg, "s5")) {
       num = 21;
-   } else if (!strcmp(reg, "$s6") || !strcmp(reg, "$22")) {
+   } else if (!strcmp(reg, "s6")) {
       num = 22;
-   } else if (!strcmp(reg, "$s7") || !strcmp(reg, "$23")) {
+   } else if (!strcmp(reg, "s7")) {
       num = 23;
-   } else if (!strcmp(reg, "$t8") || !strcmp(reg, "$24")) {
+   } else if (!strcmp(reg, "t8")) {
       num = 24;
-   } else if (!strcmp(reg, "$t9") || !strcmp(reg, "$25")) {
+   } else if (!strcmp(reg, "t9")) {
       num = 25;
-   } else if (!strcmp(reg, "$k0") || !strcmp(reg, "$26")) {
+   } else if (!strcmp(reg, "k0")) {
       num = 26;
-   } else if (!strcmp(reg, "$k1") || !strcmp(reg, "$27")) {
+   } else if (!strcmp(reg, "k1")) {
       num = 27;
-   } else if (!strcmp(reg, "$gp") || !strcmp(reg, "$28")) {
+   } else if (!strcmp(reg, "gp")) {
       num = 28;
-   } else if (!strcmp(reg, "$sp") || !strcmp(reg, "$29")) {
+   } else if (!strcmp(reg, "sp")) {
       num = 29;
-   } else if (!strcmp(reg, "$fp") || !strcmp(reg, "$30")) {
+   } else if (!strcmp(reg, "fp")) {
       num = 30;
-   } else if (!strcmp(reg, "$ra") || !strcmp(reg, "$31")) {
+   } else if (!strcmp(reg, "ra")) {
       num = 31;
    } else {
       num = -1;
@@ -255,7 +258,7 @@ int getRegisterNumber(char *reg) {
  * General parsing of line
  */
 int parseLineGeneral(char *line, int curLine) {
-   const char *format = " \t,\n";
+   const char *format = " \t,\n$:";
    const char *formatReg = " \t\n()";
    char *word;
    char *immediate;
@@ -289,9 +292,7 @@ int parseLineGeneral(char *line, int curLine) {
          }
          instLoc++;
       } else if (opFormat == 'U') {
-         //printf("word: %s\n", word);
          reg = getRegisterNumber(word); 
-         //printf("*** JR reg num: %d\n", reg);
          if (reg != -1) {
             if (instLoc == 0) {
                code |= reg << 21; //rd
@@ -315,9 +316,7 @@ int parseLineGeneral(char *line, int curLine) {
       } else if (opFormat == 'I') {
          for (i = 0; i < numSymbols; i++) {
             if (!strcmp(symbolTable[i].symbol, word)) {
-               //printf("matched symbol %s with word %s on jump: %s\n", symbolTable[i].symbol, word, line);
                code |= (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4 & 0xFFFF;
-               //printf("code: %08x  symbol: %s @ loc: %08x\n", code, symbolTable[i].symbol, symbolTable[i].loc);
                jumpSymbol = 1;
             }
          }
@@ -327,7 +326,6 @@ int parseLineGeneral(char *line, int curLine) {
             else
                code |= strtol(word, NULL, 10) & 0xFFFF; //and word so only 16 bytes are copied
          } else {
-            //printf("line: %s, word: %s\n", line, word);
             reg = getRegisterNumber(word); 
             if (reg != -1) {
                if (instLoc == 0) {
@@ -338,7 +336,6 @@ int parseLineGeneral(char *line, int curLine) {
                }
             }
             else {
-               //printf("word: %s\n", word);
                immediate = strtok(word, formatReg);
                if (immediate != NULL)
                   code |= strtol(immediate, NULL, 10);
@@ -356,22 +353,14 @@ int parseLineGeneral(char *line, int curLine) {
          }
          instLoc++;
       } else if (opFormat == 'B') {
+         if (instLoc == 2) {
          for (i = 0; i < numSymbols; i++) {
             if (!strcmp(symbolTable[i].symbol, word)) {
-               //printf("matched symbol %s with word %s on jump: %s\n", symbolTable[i].symbol, word, line);
-               code |= (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4 & 0xFFFF;
-               //printf("offset: %d\n", (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4);
-               //printf("code: %08x  symbol: %s @ loc: %08x\n", code, symbolTable[i].symbol, symbolTable[i].loc);
+               code |= ((symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4) & 0xFFFF;
                jumpSymbol = 1;
             }
          }
-         if (instLoc == 2) {
-            if (strstr(word, "0x") != NULL)
-               code |= strtol(word, NULL, 16) & 0xFFFF;
-            else
-               code |= strtol(word, NULL, 10) & 0xFFFF; //and word so only 16 bytes are copied
          } else {
-            //printf("line: %s, word: %s\n", line, word);
             reg = getRegisterNumber(word); 
             if (reg != -1) {
                if (instLoc == 0) {
@@ -382,7 +371,6 @@ int parseLineGeneral(char *line, int curLine) {
                }
             }
             else {
-               //printf("word: %s\n", word);
                immediate = strtok(word, formatReg);
                if (immediate != NULL)
                   code |= strtol(immediate, NULL, 10);
