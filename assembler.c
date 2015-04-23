@@ -165,6 +165,9 @@ int trimComment(char *word) {
 int getRegisterNumber(char *reg) {
    int num;
 
+   if (reg[strlen(reg) - 1] == ')')
+      reg[strlen(reg) - 1] = '\0';
+
    if (!strcmp(reg, "zero") || !strcmp(reg, "0")) {
       num = 0;
    } else if (!strcmp(reg, "at")) {
@@ -264,7 +267,6 @@ int parseLineGeneral(char *line, int curLine) {
          opFormat = getInstruction(word, &code);
       } else if (opFormat == 'R') {
          reg = getRegisterNumber(word); 
-         //printf("reg num: %d\n", reg);
          if (reg != -1) {
             if (instLoc == 0) {
                code |= reg << 11; //rd
@@ -320,10 +322,8 @@ int parseLineGeneral(char *line, int curLine) {
                }
             }
             else {
-               immediate = strtok(word, formatReg);
-               if (immediate != NULL)
-                  code |= strtol(immediate, NULL, 10);
-               regStr = strtok(NULL, formatReg);
+               code |= strtol(word, NULL, 10);
+               regStr = strtok(NULL, format);
                if (regStr != NULL) {
                   reg = getRegisterNumber(regStr);
                   if (reg != -1) {
@@ -335,7 +335,6 @@ int parseLineGeneral(char *line, int curLine) {
          }
          instLoc++;
       } else if (opFormat == 'B') {
-         printf("%d\n", instLoc);
          if (instLoc == 2) {
             for (i = 0; i < numSymbols; i++) {
                if (!strcmp(symbolTable[i].symbol, word)) {
@@ -364,10 +363,7 @@ int parseLineGeneral(char *line, int curLine) {
                      code |= reg << 21;
                   }
                }
-               
-               
             }
-               
          }
          instLoc++;
       } else if (opFormat == 'J') {
@@ -452,7 +448,6 @@ int main(int argc, char **argv) {
    fclose(code);
    code = fopen(argv[1], "r");
    printAssembled(assemble(code));
-   printSymbolTable(numLines);
 
    free(assembledLines);
    return 0;
