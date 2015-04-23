@@ -33,7 +33,7 @@ int parseLineForSymbolTable(char *line, int numLines) {
    }
    
    word = strtok(line, format);
-   if(word == NULL || strlen(word) == 0) {
+   if (word == NULL || strlen(word) == 0 || strchr(word, '#') != NULL) {
       return 0;
    }
 
@@ -43,7 +43,7 @@ int parseLineForSymbolTable(char *line, int numLines) {
       //printf("adding symbol: %s\n", word);
       strcpy(symbolTable[numSymbols].symbol, word);
       symbolTable[numSymbols].symbol[strlen(word) - 1] = '\0';
-      symbolTable[numSymbols].loc = (numLines - 1) * 4 + INITIAL_PC;
+      symbolTable[numSymbols].loc = (numLines) * 4 + INITIAL_PC;
       numSymbols++;
    }
 
@@ -139,24 +139,6 @@ char getInstruction(char *word, int *code) {
    } else if (!strcmp(word, "jal")) { //J
       opFormat ='J';
       *code |= 0x03 << 26;
-   } else if (!strcmp(word, "bne")) { //I
-      opFormat = 'I';
-      *code |= 0x05 << 26;
-   } else if (!strcmp(word, "lw")) { //I
-      opFormat = 'I';
-      *code |= 0x23 << 26;
-   } else if (!strcmp(word, "sw")) { //I
-      opFormat = 'I';
-      *code |= 0x2b << 26;
-   } else if (!strcmp(word, "j")) { //J
-      opFormat = 'J';
-      *code |= 0x02 << 26;
-   } else if (!strcmp(word, "jr")) { //R
-      opFormat = 'S';
-      *code |= 0x08;
-   } else if (!strcmp(word, "jal")) { //J
-      opFormat = 'J';
-      *code |= 0x03 << 26;
    } else {
       opFormat = '\0';
    }
@@ -183,7 +165,7 @@ int trimComment(char *word) {
 int getRegisterNumber(char *reg) {
    int num;
 
-   if (!strcmp(reg, "zero")) {
+   if (!strcmp(reg, "zero") || !strcmp(reg, "0")) {
       num = 0;
    } else if (!strcmp(reg, "at")) {
       num = 1;
@@ -271,10 +253,12 @@ int parseLineGeneral(char *line, int curLine) {
    int jumpSymbol = 0;
    
 
+   if (line == NULL || strlen(line) == 0)
+      return 0;
+
    word = strtok(line, format);
    while (word != NULL) {
       isComment = trimComment(word);
-      //printf("loop %d: %s\n", i++, word);
 
       if (opFormat == '\0') {
          opFormat = getInstruction(word, &code);
@@ -316,7 +300,7 @@ int parseLineGeneral(char *line, int curLine) {
       } else if (opFormat == 'I') {
          for (i = 0; i < numSymbols; i++) {
             if (!strcmp(symbolTable[i].symbol, word)) {
-               code |= (symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4 & 0xFFFF;
+               code |= ((symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4) & 0xFFFF;
                jumpSymbol = 1;
             }
          }
@@ -346,20 +330,19 @@ int parseLineGeneral(char *line, int curLine) {
                      code |= reg << 21;
                   }
                }
-               
-               
             }
                
          }
          instLoc++;
       } else if (opFormat == 'B') {
+         printf("%d\n", instLoc);
          if (instLoc == 2) {
-         for (i = 0; i < numSymbols; i++) {
-            if (!strcmp(symbolTable[i].symbol, word)) {
-               code |= ((symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4) & 0xFFFF;
-               jumpSymbol = 1;
+            for (i = 0; i < numSymbols; i++) {
+               if (!strcmp(symbolTable[i].symbol, word)) {
+                  code |= ((symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4) & 0xFFFF;
+                  jumpSymbol = 1;
+               }
             }
-         }
          } else {
             reg = getRegisterNumber(word); 
             if (reg != -1) {
@@ -390,14 +373,11 @@ int parseLineGeneral(char *line, int curLine) {
       } else if (opFormat == 'J') {
          for (i = 0; i < numSymbols; i++) {
             if (!strcmp(symbolTable[i].symbol, word)) {
-               //printf("matched symbol %s with word %s on jump: %s\n", symbolTable[i].symbol, word, line);
                code |= symbolTable[i].loc / 4;
-               //printf("code: %08x  symbol: %s @ loc: %08x\n", code, symbolTable[i].symbol, symbolTable[i].loc);
                jumpSymbol = 1;
             }
          }
          if (jumpSymbol == 0) {
-            //printf("no jump symbol for line: %s, word: %s\n", line, word);
             reg = getRegisterNumber(word);
             if (reg != -1) {
                code |= (reg & 0x1F);
@@ -409,11 +389,6 @@ int parseLineGeneral(char *line, int curLine) {
                code |= (strtol(word, NULL, 10) & 0xFFFF) << 5; //and word so only 16 bytes are copied
             }  
          }
-         //else 
-            //printf("jumpSymbol does not equal 0\n");
-            
-         
-         
          jumpSymbol = 0;
       }
 
@@ -477,7 +452,7 @@ int main(int argc, char **argv) {
    fclose(code);
    code = fopen(argv[1], "r");
    printAssembled(assemble(code));
-   //printSymbolTable(numLines);
+   printSymbolTable(numLines);
 
    free(assembledLines);
    return 0;
