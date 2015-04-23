@@ -17,8 +17,11 @@ typedef struct {
 
 static symbolEntry symbolTable[SYMBOL_TABLE_SIZE];
 static int *assembledLines;
+<<<<<<< HEAD
 
 int numSymbols = 0;
+=======
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
 
 /**
  * Check beginning of each line for symbol
@@ -41,10 +44,17 @@ int parseLineForSymbolTable(char *line, int numLines) {
    if ((end = strchr(word, ':')) != NULL) {
       *(end + 1) = '\0';
       printf("adding symbol: %s\n", word);
+<<<<<<< HEAD
       strcpy(symbolTable[numSymbols].symbol, word);
       symbolTable[numSymbols].symbol[strlen(word) - 1] = '\0';
       symbolTable[numSymbols].loc = (numLines - 1) * 4 + INITIAL_PC;
       numSymbols++;
+=======
+      strcpy(symbolTable[*numSymbols].symbol, word);
+      symbolTable[*numSymbols].symbol[strlen(word) - 1] = '\0';
+      symbolTable[*numSymbols].loc = numLines;
+      (*numSymbols)++;
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
    }
 
    return 1;
@@ -56,7 +66,11 @@ int parseLineForSymbolTable(char *line, int numLines) {
  */
 int constructSymbolTable(FILE *code) {
    char line[LINE_LENGTH];
+<<<<<<< HEAD
    int numLines = 0;
+=======
+   int numLines = 0, numSymbols = 0;
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
 
    while (fgets(line, LINE_LENGTH, code)) {
       if (parseLineForSymbolTable(line,  numLines))
@@ -131,13 +145,18 @@ char getInstruction(char *word, int *code) {
       opFormat = 'J';
       *code |= 0x02 << 26;
    } else if (!strcmp(word, "jr")) { //R
+<<<<<<< HEAD
       printf("*** JR STARTING ***\n");
       opFormat = 'U';
+=======
+      opFormat = 'R';
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
       *code |= 0x08;
    } else if (!strcmp(word, "jal")) { //J
       opFormat ='J';
       *code |= 0x03 << 26;
    } else if (!strcmp(word, "bne")) { //I
+<<<<<<< HEAD
       opFormat = 'I';
       *code |= 0x05 << 26;
    } else if (!strcmp(word, "lw")) { //I
@@ -145,12 +164,25 @@ char getInstruction(char *word, int *code) {
       *code |= 0x23 << 26;
    } else if (!strcmp(word, "sw")) { //I
       opFormat = 'I';
+=======
+      opFormat = 'I';
+      *code |= 0x05 << 26;
+   } else if (!strcmp(word, "lw")) { //I
+      opFormat = 'I';
+      *code |= 0x23 << 26;
+   } else if (!strcmp(word, "sw")) { //I
+      opFormat = 'I';
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
       *code |= 0x2b << 26;
    } else if (!strcmp(word, "j")) { //J
       opFormat = 'J';
       *code |= 0x02 << 26;
    } else if (!strcmp(word, "jr")) { //R
+<<<<<<< HEAD
       opFormat = 'S';
+=======
+      opFormat = 'R';
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
       *code |= 0x08;
    } else if (!strcmp(word, "jal")) { //J
       opFormat = 'J';
@@ -289,6 +321,7 @@ int parseLineGeneral(char *line, int curLine) {
       } else if (opFormat == 'U') {
          printf("word: %s\n", word);
          reg = getRegisterNumber(word); 
+<<<<<<< HEAD
          printf("*** JR reg num: %d\n", reg);
          if (reg != -1) {
             if (instLoc == 0) {
@@ -298,6 +331,8 @@ int parseLineGeneral(char *line, int curLine) {
          instLoc++;
       } else if (opFormat == 'S') {
          reg = getRegisterNumber(word); 
+=======
+>>>>>>> db53f9570f8d4b31c306bef4cdc63e929ceaca33
          if (instLoc == 2) {
             code |= (strtol(word, NULL, 10) & 0x1F) << 6; //shamt
          } else {
