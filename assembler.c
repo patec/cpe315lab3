@@ -8,6 +8,7 @@
 #define WORD_SIZE 10
 #define INST_SIZE 32
 #define SYMBOL_TABLE_SIZE 500
+#define INITIAL_PC 0x400024
 
 typedef struct {
    char symbol[40];
@@ -27,11 +28,12 @@ int findInSymbolTable(char *symbol) {
    
    return -1;
 }
+int numSymbols = 0;
 
 /**
  * Check beginning of each line for symbol
  */
-int parseLineForSymbolTable(char *line, int *numSymbols, int numLines) {
+int parseLineForSymbolTable(char *line, int numLines) {
    const char *format = " \t,\n";
    char *word, *end;
    int len;
@@ -41,17 +43,18 @@ int parseLineForSymbolTable(char *line, int *numSymbols, int numLines) {
    }
    
    word = strtok(line, format);
-   if (word == NULL || strlen(word) == 0 || word[0] == '#') {
+   if (word == NULL || strlen(word) == 0 || strchr(word, '#') != NULL) {
       return 0;
    }
 
    //Only need to check first word of line for symbol
    if ((end = strchr(word, ':')) != NULL) {
       *(end + 1) = '\0';
-      strcpy(symbolTable[*numSymbols].symbol, word);
-      symbolTable[*numSymbols].symbol[strlen(word) - 1] = '\0';
-      symbolTable[*numSymbols].loc = numLines;
-      (*numSymbols)++;
+      //printf("adding symbol: %s\n", word);
+      strcpy(symbolTable[numSymbols].symbol, word);
+      symbolTable[numSymbols].symbol[strlen(word) - 1] = '\0';
+      symbolTable[numSymbols].loc = (numLines) * 4 + INITIAL_PC;
+      numSymbols++;
    }
 
    return 1;
@@ -63,10 +66,10 @@ int parseLineForSymbolTable(char *line, int *numSymbols, int numLines) {
  */
 int constructSymbolTable(FILE *code) {
    char line[LINE_LENGTH];
-   int numLines = 0, numSymbols = 0;
+   int numLines = 0;
 
    while (fgets(line, LINE_LENGTH, code)) {
-      if (parseLineForSymbolTable(line, &numSymbols, numLines))
+      if (parseLineForSymbolTable(line,  numLines))
          numLines++;
    }
    
@@ -119,16 +122,26 @@ char getInstruction(char *word, int *code) {
    } else if (!strcmp(word, "sub")) { //R
       opFormat = 'R';
       *code |= 0x22;
+   } else if (!strcmp(word, "slt")) { //R
+      opFormat = 'R';
+      *code |= 0x2a; 
    } else if (!strcmp(word, "sltu")) { //R
       opFormat = 'R';
       *code |= 0x2b;
    } else if (!strcmp(word, "sltiu")) { //I
       opFormat = 'I';
       *code |= 0x0b << 26;
+<<<<<<< HEAD
    } else if (!strcmp(word, "beq")) { //B = I
       opFormat = 'B';
       *code |= 0x04 << 26;
    } else if (!strcmp(word, "bne")) { //B = I
+=======
+   } else if (!strcmp(word, "beq")) { //I
+      opFormat = 'B';
+      *code |= 0x04 << 26;
+   } else if (!strcmp(word, "bne")) { //I
+>>>>>>> da832aecbd63627e8b8d4f82fe64eece89341890
       opFormat = 'B';
       *code |= 0x05 << 26;
    } else if (!strcmp(word, "lw")) { //I
@@ -141,7 +154,7 @@ char getInstruction(char *word, int *code) {
       opFormat = 'J';
       *code |= 0x02 << 26;
    } else if (!strcmp(word, "jr")) { //R
-      opFormat = 'R';
+      opFormat = 'U';
       *code |= 0x08;
    } else if (!strcmp(word, "jal")) { //J
       opFormat ='J';
@@ -173,6 +186,12 @@ int trimComment(char *word) {
 int getRegisterNumber(char *reg) {
    int num;
 
+<<<<<<< HEAD
+=======
+   if (reg[strlen(reg) - 1] == ')')
+      reg[strlen(reg) - 1] = '\0';
+
+>>>>>>> da832aecbd63627e8b8d4f82fe64eece89341890
    if (!strcmp(reg, "zero") || !strcmp(reg, "0")) {
       num = 0;
    } else if (!strcmp(reg, "at")) {
@@ -248,12 +267,25 @@ int getRegisterNumber(char *reg) {
  * General parsing of line
  */
 int parseLineGeneral(char *line, int curLine) {
+<<<<<<< HEAD
    const char *format = " \t,\n$";
+=======
+   const char *format = " \t,\n$:";
+   const char *formatReg = " \t\n()";
+>>>>>>> da832aecbd63627e8b8d4f82fe64eece89341890
    char *word;
+   char *immediate;
+   char *regStr;
    int code = 0, reg, instLoc = 0, isComment;
    char opFormat = 0;
    char buffer[INST_SIZE];
    int i = 0;
+   int setSymbol = 0;
+   int jumpSymbol = 0;
+   
+
+   if (line == NULL || strlen(line) == 0)
+      return 0;
 
    if (line == NULL || strlen(line) == 0)
       return 0;
@@ -276,6 +308,14 @@ int parseLineGeneral(char *line, int curLine) {
             }
          }
          instLoc++;
+      } else if (opFormat == 'U') {
+         reg = getRegisterNumber(word); 
+         if (reg != -1) {
+            if (instLoc == 0) {
+               code |= reg << 21; //rd
+            }
+         }
+         instLoc++;
       } else if (opFormat == 'S') {
          reg = getRegisterNumber(word); 
          if (instLoc == 2) {
@@ -291,6 +331,12 @@ int parseLineGeneral(char *line, int curLine) {
          }
          instLoc++;
       } else if (opFormat == 'I') {
+         for (i = 0; i < numSymbols; i++) {
+            if (!strcmp(symbolTable[i].symbol, word)) {
+               code |= ((symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4) & 0xFFFF;
+               jumpSymbol = 1;
+            }
+         }
          if (instLoc == 2) {
             if (strstr(word, "0x") != NULL)
                code |= strtol(word, NULL, 16) & 0xFFFF;
@@ -299,10 +345,55 @@ int parseLineGeneral(char *line, int curLine) {
          } else {
             reg = getRegisterNumber(word); 
             if (reg != -1) {
-               if (instLoc == 0)
+               if (instLoc == 0) {
                   code |= reg << 16;
-               else if (instLoc == 1)
+               }
+               else if (instLoc == 1) {
                   code |= reg << 21;
+               }
+            }
+            else {
+               code |= strtol(word, NULL, 10);
+               regStr = strtok(NULL, format);
+               if (regStr != NULL) {
+                  reg = getRegisterNumber(regStr);
+                  if (reg != -1) {
+                     code |= reg << 21;
+                  }
+               }
+            }
+               
+         }
+         instLoc++;
+      } else if (opFormat == 'B') {
+         if (instLoc == 2) {
+            for (i = 0; i < numSymbols; i++) {
+               if (!strcmp(symbolTable[i].symbol, word)) {
+                  code |= ((symbolTable[i].loc - (curLine * 4 + INITIAL_PC )) / 4) & 0xFFFF;
+                  jumpSymbol = 1;
+               }
+            }
+         } else {
+            reg = getRegisterNumber(word); 
+            if (reg != -1) {
+               if (instLoc == 0) {
+                  code |= reg << 21;
+               }
+               else if (instLoc == 1) {
+                  code |= reg << 16;
+               }
+            }
+            else {
+               immediate = strtok(word, formatReg);
+               if (immediate != NULL)
+                  code |= strtol(immediate, NULL, 10);
+               regStr = strtok(NULL, formatReg);
+               if (regStr != NULL) {
+                  reg = getRegisterNumber(regStr);
+                  if (reg != -1) {
+                     code |= reg << 21;
+                  }
+               }
             }
          }
          instLoc++;
@@ -320,7 +411,25 @@ int parseLineGeneral(char *line, int curLine) {
          }
          instLoc++;
       } else if (opFormat == 'J') {
-
+         for (i = 0; i < numSymbols; i++) {
+            if (!strcmp(symbolTable[i].symbol, word)) {
+               code |= symbolTable[i].loc / 4;
+               jumpSymbol = 1;
+            }
+         }
+         if (jumpSymbol == 0) {
+            reg = getRegisterNumber(word);
+            if (reg != -1) {
+               code |= (reg & 0x1F);
+            }
+            else if (strstr(word, "0x") != NULL && !setSymbol) {
+               code |= (strtol(word, NULL, 16) & 0xFFFF) << 5;
+            }
+            else {
+               code |= (strtol(word, NULL, 10) & 0xFFFF) << 5; //and word so only 16 bytes are copied
+            }  
+         }
+         jumpSymbol = 0;
       }
 
       //Rest of line is comment
