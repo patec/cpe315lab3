@@ -22,6 +22,19 @@ typedef struct {
    int type;
 } line;
 
+typdef struct {
+   line inst;
+   int pc;
+   int rs;
+   int rt;
+   int rd;
+   int imm;
+   int opCode;
+   int funcCode;
+   int flush;
+   int busy;
+} status;
+
 static symbolEntry symbolTable[SYMBOL_TABLE_SIZE];
 static line assembledLines[PROG_SIZE];
 static int registers[NUM_REGISTERS];
@@ -478,7 +491,7 @@ void initRegisters() {
 
    for (i = 0; i < NUM_REGISTERS; i++) {
       registers[i] = 0; 
-   }
+     }
 
    registers[28] = PROG_SIZE / 4;
    registers[29] = PROG_SIZE - 8;
@@ -666,9 +679,57 @@ int runCommand(line *inst, int *memRefs, int *clockCycles, int lineNum) {
    return (pc - INITIAL_PC) / 4;
 }
 
+void instructionFetch(status *s, line *inst) {
+   s.pc += 4;
+   s.inst = *inst;
+   s.busy = 1;
+}
+
+void instructionDecode(status *s) {
+   //set registers
+   s.busy = 1;
+}
+
+void execute(status *s) {
+   //execute
+   // set flush if branching or jumping
+   s.busy = 1;
+}
+
+void memoryAccess(status *s) {
+   //skip if no memory access
+   s.busy = 1;
+}
+
+void writeBack(status *s) {
+   // write back to registers
+   s.busy = 1;
+}
+
+void initStatus(status *s) {
+   s->pc = 0;
+   s->rs = -1;
+   s->rs = -1;
+   s->rd = -1;
+   s->imm = 0;
+   s->opCode = -1;
+   s->funcCode = -1;
+   s->flush = 0;
+   s->busy = 0;
+}
+   
+   
+
 void runProgram(int numLines) {
    char cmd;
    int i = 0, j, memRefs = 0, clockCycles = 0, instExec = 0, totClock = 0;
+   status fetchReturn, decodeReturn, executeReturn, memReturn, wbReturn;
+   initStatus(fetchReturn);
+   initStatus(decodeReturn);
+   initStatus(executeReturn);
+   initStatus(memReturn);
+   initStatus(wbReturn);
+   
 
    initRegisters();
 
