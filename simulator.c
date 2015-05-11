@@ -644,7 +644,7 @@ int runCommand(line *inst, int *memRefs, int *clockCycles, int lineNum) {
       *clockCycles += 4;
       *memRefs += 1;
    } else if (inst->type == J_CODE) {
-      pc = (inst->inst & 0x1FFFFFF) * 4 - 16;
+      pc = (inst->inst & 0x1FFFFFF) * 4;
       *clockCycles += 3;
    } else if (inst->type == JR_CODE) {
       rs = (inst->inst >> 21) & 0x1F;
