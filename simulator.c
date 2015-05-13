@@ -37,6 +37,8 @@ typedef struct {
    int flush;
    int busy;
    int writeBack;
+   int exec;
+   int nop;
    // LOGIC TO WRITE BACK
 } status;
 
@@ -701,6 +703,8 @@ void initStatus(status *s) {
    s->aluOut = 0;
    s->flush = 0;
    s->busy = 0;
+   s->exec = 0;
+   s->nop = 0;
 }
 
 status instructionFetch(int i) {
@@ -708,202 +712,110 @@ status instructionFetch(int i) {
    initStatus(&s);
    
    s.pc = PROG_START + i * 4;
-   
    s.inst = assembledLines[i];
    if (s.inst.type == SYSCALL_CODE) {
       if (registers[2]  == 10)
          s.pc = -1;
    }
    s.busy = 1;
-   printf("%08X ", s.inst.inst);
+   printf("%08X\n", s.inst.inst);
    
    return s;
 }
 
 status instructionDecode(status s) {
    int lineNum = 0;
-   //int rs, rt, rd, imm, shamt, address, pc = lineNum * 4 + INITIAL_PC, oldPc;
    
-
-   //printf("%08X\n", s.inst.inst);
-   if (s.inst.type == AND_CODE) {
+   if (s.inst.inst == 0) {
+      s.nop = 1;
+      s.busy = 0;
+      return s;
+   } else if (s.inst.type == AND_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = registers[rs] & registers[rt];
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == OR_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = registers[rs] | registers[rt];
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type ==  ORI_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      //printf("  ORI rs: %d  rt: %d  ", s.rs, s.rt);
-      //registers[rt] = registers[rs] | (short) imm;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == ADD_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = registers[rs] + registers[rt];
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type ==  ADDU_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = (unsigned) registers[rs] + (unsigned) registers[rt];
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == ADDI_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      //registers[rt] = registers[rs] + (short) imm;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == ADDIU_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      //registers[rt] = (unsigned) registers[rs] & (unsigned short) imm;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == SLL_CODE) {
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
       s.shamt = (s.inst.inst >> 6) & 0x1F;
-      //registers[rd] = registers[rt] << shamt;
-      //pc += 4;
-      //*clockCycles += shamt + 5;
    } else if (s.inst.type == SRL_CODE) {
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
       s.shamt = (s.inst.inst >> 6) & 0x1F;
-      //registers[rd] = registers[rt] >> shamt;
-      //pc += 4;
-      //*clockCycles += shamt + 5;
    } else if (s.inst.type == SRA_CODE) {
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
       s.shamt = (s.inst.inst >> 6) & 0x1F;
-      //registers[rd] = (unsigned) registers[rt] >> shamt;
-      //pc += 4;
-      //*clockCycles += shamt + 5;
    } else if (s.inst.type == SUB_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = registers[rs] - registers[rt];
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == SLT_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = registers[rs] < registers[rt] ? 1 : 0;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == SLTI_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      // registers[rt] = registers[rs] < imm ? 1 : 0;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == SLTU_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.rd = (s.inst.inst >> 11) & 0x1F;
-      //registers[rd] = (unsigned) registers[rs] < (unsigned) registers[rt] ? 1 : 0;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == SLTIU_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      //registers[rt] = (unsigned) registers[rs] < (unsigned) imm ? 1 : 0;
-      //pc += 4;
-      //*clockCycles += 4;
    } else if (s.inst.type == BEQ_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
-      /*address = (inst->inst & 0xFFFF);
-      if (address & 0x8000)
-         address += 0xFFFF0000;
-      address = address * 4;
-      if (registers[rs] == registers[rt]) {
-         pc += address;
-      } else {
-         pc += 4; 
-      }
-      *clockCycles += 3;*/
    } else if (s.inst.type == BNE_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
-      /*address = (inst->inst & 0xFFFF);
-      if (address & 0x8000)
-         address += 0xFFFF0000;
-      address = address * 4;
-      if (registers[rs] != registers[rt]) {
-         pc += address;
-      } else {
-         pc += 4;
-      }
-      *clockCycles += 3;*/
    } else if (s.inst.type == LUI_CODE) {
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      /*registers[rt] = (imm << 16) & 0xFFFF0000;
-      pc += 4;
-      *clockCycles += 4;
-      *memRefs += 1;*/
    } else if (s.inst.type == LW_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      /*registers[rt] = assembledLines[registers[rs] + imm].inst;
-      pc += 4;
-      *clockCycles += 5;
-      *memRefs = 1;*/
    } else if (s.inst.type == SW_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
       s.rt = (s.inst.inst >> 16) & 0x1F;
       s.imm = s.inst.inst & 0xFFFF;
-      /*assembledLines[registers[rs] + imm].inst = registers[rt];
-      pc += 4;
-      *clockCycles += 4;
-      *memRefs += 1;*/
    } else if (s.inst.type == J_CODE) {
-      //s.pc = (s.inst.inst & 0x1FFFFFF) * 4;
-      //*clockCycles += 3;
    } else if (s.inst.type == JR_CODE) {
       s.rs = (s.inst.inst >> 21) & 0x1F;
-      //oldPc = pc;
-      //pc = registers[rs] - 4; 
-      //registers[31] = oldPc - 4;
-      //*clockCycles += 3;
    } else if (s.inst.type == JAL_CODE) {
-      //registers[31] = pc + 8; 
-      //pc = (inst->inst & 0x1FFFFFF) * 4;
-      //*clockCycles += 3;
    } else if (s.inst.type == SYSCALL_CODE) {
-      if (registers[2]  == 10)
+      if (registers[2]  == 10){
          s.pc = -1;
-        //return -1; 
-   } else {
-      //pc += 4;
-   }
-
-   //return (pc - INITIAL_PC) / 4;
-   
+      }
+   } 
    
    s.busy = 1;
    
@@ -913,67 +825,81 @@ status instructionDecode(status s) {
 status execute(status s, int *clockCycles) {
    int address, oldPc;
 
-   if (s.inst.type == AND_CODE) {
+   if (s.inst.inst == 0) {
+      s.nop = 1;
+   } else if (s.inst.type == AND_CODE) {
       s.aluOut = registers[s.rs] & registers[s.rt];
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == OR_CODE) {
       s.aluOut = registers[s.rs] | registers[s.rt];
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type ==  ORI_CODE) {
       s.aluOut = registers[s.rs] | (short) s.imm;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == ADD_CODE) {
       s.aluOut = registers[s.rs] + registers[s.rt];
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type ==  ADDU_CODE) {
       s.aluOut = (unsigned) registers[s.rs] + (unsigned) registers[s.rt];
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == ADDI_CODE) {
       s.aluOut = registers[s.rs] + (short) s.imm;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == ADDIU_CODE) {
       s.aluOut = (unsigned) registers[s.rs] & (unsigned short) s.imm;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == SLL_CODE) {
       s.aluOut = registers[s.rt] << s.shamt;
       s.writeBack = 1;
-      //printf("  adding %d to clockCycles in SLL  ", s.shamt);
       *clockCycles += s.shamt;
+      s.exec = 1;
    } else if (s.inst.type == SRL_CODE) {
       s.aluOut = registers[s.rt] >> s.shamt;
       s.writeBack = 1;
-      //printf("  adding %d to clockCycles in SRL  ", s.shamt);
       *clockCycles += s.shamt;
+      s.exec = 1;
    } else if (s.inst.type == SRA_CODE) {
       s.aluOut = (unsigned) registers[s.rt] >> s.shamt;
       s.writeBack = 1;
-      //printf("  adding %d to clockCycles in SRA  ", s.shamt);
       *clockCycles += s.shamt;
+      s.exec = 1;
    } else if (s.inst.type == SUB_CODE) {
       s.aluOut = registers[s.rs] - registers[s.rt];
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == SLT_CODE) {
       s.aluOut = registers[s.rs] < registers[s.rt] ? 1 : 0;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == SLTI_CODE) {
       s.aluOut = registers[s.rs] < s.imm ? 1 : 0;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == SLTU_CODE) {
       s.aluOut = (unsigned) registers[s.rs] < (unsigned) registers[s.rt] ? 1 : 0;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == SLTIU_CODE) {
       s.aluOut = (unsigned) registers[s.rs] < (unsigned) s.imm ? 1 : 0;
       s.writeBack = 1;
+      s.exec = 1;
    } else if (s.inst.type == BEQ_CODE) {
       address = (s.inst.inst & 0xFFFF);
       if (address & 0x8000)
          address += 0xFFFF0000;
       address = address * 4;
       if (registers[s.rs] == registers[s.rt]) {
-         //printf("set pc\n");
          s.pc += address;
          s.flush = 1;
       }
+      s.exec = 1;
    } else if (s.inst.type == BNE_CODE) {
       address = (s.inst.inst & 0xFFFF);
       if (address & 0x8000)
@@ -983,36 +909,43 @@ status execute(status s, int *clockCycles) {
          s.pc += address;
          s.flush = 1;
       } 
+      s.exec = 1;
    } else if (s.inst.type == LUI_CODE) {
       s.aluOut = (s.imm << 16) & 0xFFFF0000;
-      //*memRefs += 1;
+      s.exec = 1;
    } else if (s.inst.type == LW_CODE) {
       s.aluOut = assembledLines[registers[s.rs] + s.imm].inst;
-      //*memRefs = 1;
+      s.exec = 1;
    } else if (s.inst.type == SW_CODE) {
       s.aluOut = assembledLines[registers[s.rs] + s.imm].inst;
-      //*memRefs += 1;
+      s.exec = 1;
    } else if (s.inst.type == J_CODE) {
       s.pc = (s.inst.inst & 0x1FFFFFF) * 4 + PROG_START;
       s.flush = 1;
+      s.exec = 1;
    } else if (s.inst.type == JR_CODE) {
       oldPc = s.pc;
       s.pc = registers[s.rs] - 4; 
       s.aluOut = oldPc - 4; 
       s.writeBack = 1;
       s.flush = 1;
+      s.exec = 1;
    } else if (s.inst.type == JAL_CODE) {
       s.aluOut = s.pc + 8; 
       s.writeBack = 1;
       s.pc = (s.inst.inst & 0x1FFFFFF) * 4 + PROG_START;
       s.flush = 1;
+      s.exec = 1;
    } else if (s.inst.type == SYSCALL_CODE) {
       if (registers[2]  == 10) {
          s.pc = -1; 
       }
+      s.exec = 1;
+   } else {
+      s.exec = 0;
    }
+   
 
-   //return (pc - INITIAL_PC) / 4;
    s.busy = 1;
    
    return s;
@@ -1027,7 +960,6 @@ status memoryAccess(status s, int *memRefs) {
       *memRefs += 1;
    } 
    
-   //skip if no memory access
    s.busy = 1;
    
    return s;
@@ -1072,23 +1004,28 @@ status writeBack(status s, int *memRefs) {
    } else if (s.inst.type == SW_CODE) {
       assembledLines[registers[s.rs] + s.imm].inst = registers[s.rt];
       *memRefs += 1;
-   } /*else if (s.inst.type == J_CODE) {
-   } else if (s.inst.type == JR_CODE) {
-      registers[31] = oldPc - 4;
    } else if (s.inst.type == JAL_CODE) {
-      registers[31] = pc + 8; 
-   } else if (s.inst.type == SYSCALL_CODE) {
-      if (registers[2]  == 10)
-        return -1; 
-   }*/
-   // write back to registers
+      registers[31] = s.aluOut;
+   }
    
    return s;
+}
+
+void printStats(int instExec, int memRefs, int totClock, int fetcher) {
+   int j;
+   
+   printf("Instructions executed: %d\n", instExec);
+   printf("Memory references: %d\n", memRefs);
+   printf("Clock cycles: %d\n", totClock);
+   printf("Instructions Fetched: %d\n", fetcher);
+   for (j = 0; j < NUM_REGISTERS; j++) {
+      printf("R%d = %08X\n", j, registers[j]); 
+   }
 }
    
 void runProgramPipeline(int numLines) {
    char cmd;
-   int i = 0, j, memRefs = 0, clockCycles = 0, instExec = 0, totClock = 0;
+   int i = 0, j, memRefs = 0, clockCycles = 0, instExec = 0, totClock = 0, fetcher = 0;
    status fetchReturn, decodeReturn, executeReturn, memReturn, wbReturn;
    
 
@@ -1099,80 +1036,49 @@ void runProgramPipeline(int numLines) {
       scanf(" %c", &cmd);
 
       if (cmd == 's') {
-         /*
-         clockCycles = 0;
-         memRefs = 0; //TODO: add totalMemRefs?
-         i = runCommand(&assembledLines[i], &memRefs, &clockCycles, i);
-         instExec++;
-         totClock += clockCycles;
-
-         printf("Instructions executed (step): %d\n", 1);
-         printf("Instructions executed (total): %d\n", instExec);
-         printf("Memory references: %d\n", memRefs);
-         printf("Clock cycles (step): %d\n", clockCycles);
-         printf("Clock cycles (total): %d\n", totClock);
-         for (j = 0; j < NUM_REGISTERS; j++) {
-            printf("R%d = %08X\n", j, registers[j]); 
-         }
-         */
-         
-         
             if (memReturn.busy == 1) {
-               printf("WB     ");
                wbReturn = writeBack(memReturn, &memRefs);
-               //printf("******* PC IS %08x *****   \n", wbReturn.pc);
                memReturn.busy = 0;
-               printf("\n");
             }
             if (executeReturn.busy == 1 && memReturn.busy != 1) {
-               printf("MEM   ");
                memReturn = memoryAccess(executeReturn, &memRefs);
                executeReturn.busy = 0;
-               printf("\n");
             }
-            // check for memReturn.flush
             if (decodeReturn.busy == 1 && executeReturn.busy != 1) {
-               printf("EXE     ");
-               //printf("old pc: %08x   ",executeReturn.pc); 
                executeReturn = execute(decodeReturn, &totClock);
-               //printf("******* PC IS %08x *****   \n", executeReturn.pc);
-               //printf("new pc: %08x   ",executeReturn.pc); 
                decodeReturn.busy = 0;
                if (executeReturn.flush == 1) {
                   fetchReturn.busy = 0;
                   decodeReturn.busy = 0;
-                  printf("old i: %d  ", i);
                   i = (executeReturn.pc - PROG_START) / 4;
-                  printf("new i: %d  ", i);
                }
-               printf("\n");
             }
             if (fetchReturn.busy == 1 && decodeReturn.busy != 1) {
-               printf("DECODE     ");
                decodeReturn = instructionDecode(fetchReturn);
-               //printf("******* PC IS %08x *****   \n", decodeReturn.pc);
                fetchReturn.busy = 0;
-               printf("\n");
             }
             if (fetchReturn.busy != 1) {
-               printf("FETCH     ");
-               printf("fetching %08X  ", i);
                fetchReturn = instructionFetch(i);
-               //printf("******* PC IS %08x *****   \n", fetchReturn.pc);
                if (fetchReturn.pc == -1) {
                   i = -1;
                }
                i++;
-               printf("\n");
             }
             
-            //i = runCommand(&assembledLines[i], &memRefs, &totClock, i);
-            if (executeReturn.pc > 0)
+            if (executeReturn.exec == 1 && executeReturn.nop != 1)
                instExec++;
+            
+            if (fetchReturn.busy == 1)
+               fetcher++;   
                
             totClock++;
-            printf("clock: %d\n", totClock);
-            
+         
+         //printf("Instructions executed (step): %d\n", 1);
+         printf("Instructions executed (total): %d\n", instExec);
+         printf("Memory references: %d\n", memRefs);
+         //printf("Clock cycles (step): %d\n", 1);
+         printf("Clock cycles (total): %d\n", totClock);
+         printf("fetcher: %d\n", fetcher);
             
          for (j = 0; j < NUM_REGISTERS; j++) {
             printf("R%d = %08X\n", j, registers[j]); 
@@ -1181,66 +1087,56 @@ void runProgramPipeline(int numLines) {
       } else if (cmd == 'r') {
          while (i < numLines && executeReturn.pc >= 0) {
             if (memReturn.busy == 1) {
-               printf("WB     ");
                wbReturn = writeBack(memReturn, &memRefs);
-               //printf("******* PC IS %08x *****   \n", wbReturn.pc);
                memReturn.busy = 0;
-               printf("\n");
             }
             if (executeReturn.busy == 1 && memReturn.busy != 1) {
-               printf("MEM   ");
                memReturn = memoryAccess(executeReturn, &memRefs);
                executeReturn.busy = 0;
-               printf("\n");
             }
-            // check for memReturn.flush
             if (decodeReturn.busy == 1 && executeReturn.busy != 1) {
-               printf("EXE     ");
-               //printf("old pc: %08x   ",executeReturn.pc); 
                executeReturn = execute(decodeReturn, &totClock);
-               //printf("******* PC IS %08x *****   \n", executeReturn.pc);
-               //printf("new pc: %08x   ",executeReturn.pc); 
                decodeReturn.busy = 0;
                if (executeReturn.flush == 1) {
                   fetchReturn.busy = 0;
                   decodeReturn.busy = 0;
-                  printf("old i: %d  ", i);
                   i = (executeReturn.pc - PROG_START) / 4;
-                  printf("new i: %d  ", i);
                }
-               printf("\n");
             }
             if (fetchReturn.busy == 1 && decodeReturn.busy != 1) {
-               printf("DECODE     ");
                decodeReturn = instructionDecode(fetchReturn);
-               //printf("******* PC IS %08x *****   \n", decodeReturn.pc);
                fetchReturn.busy = 0;
-               printf("\n");
+               if (decodeReturn.pc == -1) {
+                  printStats(instExec, memRefs, totClock, fetcher);
+                  return;
+               }
             }
             if (fetchReturn.busy != 1) {
                fetchReturn = instructionFetch(i);
-               //printf("******* PC IS %08x *****   \n", fetchReturn.pc);
                if (fetchReturn.pc == -1) {
                   i = -1;
                }
                i++;
-               printf("\n");
             }
             
-            //i = runCommand(&assembledLines[i], &memRefs, &totClock, i);
-            if (executeReturn.pc > 0)
+            if (executeReturn.exec == 1 && executeReturn.nop != 1)
                instExec++;
+            
+            if (fetchReturn.busy == 1)
+               fetcher++;   
                
             totClock++;
-            printf("clock: %d\n", totClock);
          }
-         
+         printStats(instExec, memRefs, totClock, fetcher);
+         /*
          printf("Instructions executed: %d\n", instExec);
          printf("Memory references: %d\n", memRefs);
          printf("Clock cycles: %d\n", totClock);
+         printf("fetcher: %d\n", fetcher);
          for (j = 0; j < NUM_REGISTERS; j++) {
             printf("R%d = %08X\n", j, registers[j]); 
-         }
+         }*/
+         //printf("i: %d  executeReturn.pc: %08x  numlinees: %d\n", i, executeReturn.pc, numLines);
       } else if (cmd == 'q') {
          i = -1;
       } else {
